@@ -1,0 +1,26 @@
+{
+  "name": "jwtvercel",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "tsc",
+    "start": "vercel dev",
+    "deploy": "vercel"
+  },
+  "dependencies": {
+    "@vercel/node": "^3.2.18",
+    "dotenv": "^16.4.5",
+    "jose": "^4.4.0"
+  },
+  "engines": {
+    "node": ">=14.x"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.6.2"
+  }
+}

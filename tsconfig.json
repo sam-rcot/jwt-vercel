@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",            // Modern JavaScript features
+    "module": "ESNext",            // Set the module system to ESNext for ESModules
+    "moduleResolution": "Node",    // Node-style module resolution
+    "esModuleInterop": true,       // Enables interoperability between CommonJS and ESModules
+    "strict": true,                // Strict type-checking options
+    "outDir": "./dist",            // Output directory for compiled files
+    "skipLibCheck": true           // Skips type checking of declaration files
+  },
+  "include": ["api/**/*.ts"]
+}
