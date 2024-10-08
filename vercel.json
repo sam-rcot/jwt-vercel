@@ -2,8 +2,14 @@
   "version": 2,
   "builds": [
     {
-      "src": "api/generate-jwt.ts",
+      "src": "api/**/*.js",
       "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/$1.js"
     }
   ]
 }

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Side JWT Generator</title>
+</head>
+<body>
+  <h1>JWT Generator</h1>
+
+  <form id="jwtForm">
+    <label>
+      Key ID:
+      <input type="text" id="keyID" required>
+    </label><br>
+
+    <label>
+      Issuer ID:
+      <input type="text" id="issuerID" required>
+    </label><br>
+
+    <label>
+      Private Key:
+      <textarea id="privateKey" rows="4" cols="50" required></textarea>
+    </label><br>
+
+    <button type="submit">Generate JWT</button>
+  </form>
+
+  <h3>JWT Result:</h3>
+  <pre id="jwtResult"></pre>
+
+  <script>
+    async function encryptPrivateKey(privateKey, publicKeyPem) {
+      // Generate a random AES key (32 bytes)
+      const aesKey = crypto.getRandomValues(new Uint8Array(32));
+
+      // Generate a random IV (16 bytes for AES-256-CBC)
+      const iv = crypto.getRandomValues(new Uint8Array(16));
+
+      // Encrypt the private key using AES-256-CBC
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(privateKey);
+      const aesKeyCrypto = await crypto.subtle.importKey('raw', aesKey, 'AES-CBC', false, ['encrypt']);
+      const encryptedPrivateKeyBuffer = await crypto.subtle.encrypt({ name: 'AES-CBC', iv }, aesKeyCrypto, keyData);
+      const encryptedPrivateKey = btoa(String.fromCharCode(...new Uint8Array(encryptedPrivateKeyBuffer)));
+
+      // Clean up the PEM-encoded public key (strip headers and newlines)
+      const publicKeyPemFormatted = publicKeyPem
+              .replace('-----BEGIN PUBLIC KEY-----', '')
+              .replace('-----END PUBLIC KEY-----', '')
+              .replace(/\n/g, '');
+
+      // Convert the cleaned up public key into a Uint8Array (binary)
+      const publicKeyBinary = Uint8Array.from(atob(publicKeyPemFormatted), c => c.charCodeAt(0));
+
+      // Import the public key into the Web Crypto API
+      const publicKeyCrypto = await crypto.subtle.importKey(
+              'spki',
+              publicKeyBinary.buffer,
+              { name: 'RSA-OAEP', hash: 'SHA-256' },
+              false,
+              ['encrypt']
+      );
+
+      // Encrypt the AES key with the public RSA key
+      const encryptedAESKeyBuffer = await crypto.subtle.encrypt({ name: 'RSA-OAEP' }, publicKeyCrypto, aesKey);
+      const encryptedAESKey = btoa(String.fromCharCode(...new Uint8Array(encryptedAESKeyBuffer)));
+
+      return { encryptedAESKey, encryptedPrivateKey, iv: btoa(String.fromCharCode(...iv)) };
+    }
+
+    document.getElementById('jwtForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+
+      const keyID = document.getElementById('keyID').value;
+      const issuerID = document.getElementById('issuerID').value;
+      const privateKey = document.getElementById('privateKey').value;
+
+      try {
+        // Fetch the public key from the server (server's RSA public key)
+        const publicKeyResponse = await fetch('http://localhost:3000/api/send-pubkey');
+        const publicKeyPem = await publicKeyResponse.text();
+
+        // Encrypt the private key using AES and the public RSA key
+        const { encryptedAESKey, encryptedPrivateKey, iv } = await encryptPrivateKey(privateKey, publicKeyPem);
+
+        // Prepare the data to be sent to the server
+        const data = {
+          keyID,
+          issuerID,
+          encryptedAESKey,
+          encryptedPrivateKey,
+          iv
+        };
+
+        // Make an HTTP POST request to your local API
+        const response = await fetch('http://localhost:3000/api/generate-jwt', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(data)
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          document.getElementById('jwtResult').textContent = JSON.stringify(result, null, 2);
+        } else {
+          const error = await response.json();
+          document.getElementById('jwtResult').textContent = `Error: ${error.message}`;
+        }
+      } catch (err) {
+        document.getElementById('jwtResult').textContent = `Error: ${err.message}`;
+      }
+    });
+  </script>
+
+</body>
+</html>
